@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.pyc
+
+# Local Configs & Credentials
+config.json
+wos-service-account.json
+facilities.csv
+facilities_scanned.csv
+
+# Debug images
+debug_fail_*.png
