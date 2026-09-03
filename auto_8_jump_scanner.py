@@ -1,3 +1,5 @@
+import csv
+import os
 import cv2
 import easyocr
 import numpy as np
@@ -72,30 +74,6 @@ def scale_coords(x, y):
     """Converts 1080x1920 base coordinates to actual emulator resolution."""
     return int(round(x * SCALE_X)), int(round(y * SCALE_Y))
 
-# ─── Find and cache Emulator window position ─────────────────────────────────
-_window_rect = None
-
-def find_bluestacks_window():
-    global _window_rect
-    titles = []
-    def cb(hwnd, _):
-        if win32gui.IsWindowVisible(hwnd):
-            titles.append((hwnd, win32gui.GetWindowText(hwnd)))
-    win32gui.EnumWindows(cb, None)
-    
-    for hwnd, title in titles:
-        if any(kw in title.lower() for kw in ['bluestacks', 'bs5', 'nox', 'ldplayer', 'memu', 'mumu', 'mumunx']):
-            left, top, right, bottom = win32gui.GetClientRect(hwnd)
-            x, y, r, b = win32gui.GetWindowRect(hwnd)
-            client_left, client_top = win32gui.ClientToScreen(hwnd, (0, 0))
-            w = right - left
-            h = bottom - top
-            _window_rect = {"left": client_left, "top": client_top, "width": w, "height": h}
-            print(f"[+] Found emulator window: '{title}' at {_window_rect}")
-            return _window_rect
-    print("[!] Emulator window not found, falling back to ADB screenshot")
-    return None
-
 def adb_shell(cmd, wait=True):
     full_cmd = [ADB_PATH, '-s', ADB_SERIAL, 'shell', cmd]
     if wait:
@@ -112,153 +90,91 @@ def adb_tap(x, y, sleep_time=0.1):
 TARGET_W, TARGET_H = 1080, 1920
 
 def get_screenshot():
-    """Fast Windows window capture, normalized to 1080x1920. Falls back to ADB."""
-    global _window_rect
-    if _window_rect is None:
-        _window_rect = find_bluestacks_window()
-
-    img = None
-    if _window_rect is not None:
-        try:
-            # Find the window handle and restore it if minimized
-            titles = []
-            def cb(hwnd, _):
-                if win32gui.IsWindowVisible(hwnd):
-                    titles.append((hwnd, win32gui.GetWindowText(hwnd)))
-            win32gui.EnumWindows(cb, None)
-
-            for hwnd, title in titles:
-                if any(kw in title.lower() for kw in ['bluestacks', 'bs5', 'nox', 'ldplayer', 'memu']):
-                    import win32con
-                    placement = win32gui.GetWindowPlacement(hwnd)
-                    if placement[1] == win32con.SW_SHOWMINIMIZED:
-                        # Window is minimized — restore it
-                        win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
-                        time.sleep(0.5)  # Wait for restore animation
-                    break
-
-            with mss.mss() as sct:
-                raw = sct.grab(_window_rect)
-                img = cv2.cvtColor(np.array(raw), cv2.COLOR_BGRA2BGR)
-        except Exception as e:
-            print(f"[!] Window capture failed: {e}, falling back to ADB")
-
-    if img is None:
-        # ADB fallback
-        cmd = [ADB_PATH, '-s', ADB_SERIAL, 'exec-out', 'screencap', '-p']
-        result = subprocess.run(cmd, capture_output=True)
-        if result.returncode != 0 or not result.stdout:
-            return None
-        arr = np.frombuffer(result.stdout, np.uint8)
-        img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
-
+    """Captures screenshot directly from ADB for 100% clean emulator framebuffer."""
+    cmd = [ADB_PATH, '-s', ADB_SERIAL, 'exec-out', 'screencap', '-p']
+    result = subprocess.run(cmd, capture_output=True)
+    if result.returncode != 0 or not result.stdout:
+        return None
+    arr = np.frombuffer(result.stdout, np.uint8)
+    img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
     if img is None:
         return None
 
-    # Normalize to TARGET resolution so all crop/color logic is consistent
+    # Normalize to TARGET resolution so all coordinate logic is consistent
     h, w = img.shape[:2]
     if w != TARGET_W or h != TARGET_H:
         img = cv2.resize(img, (TARGET_W, TARGET_H), interpolation=cv2.INTER_LINEAR)
     return img
 
 def extract_tag(text):
-    # EasyOCR can misread [ as ( or { and ] as ) or J or ]
-    # So we match any combination of opening/closing bracket-like chars
-    match = re.search(r'[\[(\{]([A-Za-z0-9]{2,5})[\]\)JjIi\}|]', text)
+    if not text:
+        return None
+    # Match tags like [FOR], [FORJ, (KOR), {WAR}, [FOR]REAL
+    # EasyOCR often turns ']' into 'J', 'j', 'I', 'i', '}', ')'
+    match = re.search(r'[\[\(\{]([A-Za-z0-9]{2,5})[\]\)\}JjIi\|]', text)
     if match:
-        return match.group(1).upper()
-    # Also try: just 2-5 uppercase letters surrounded by common OCR noise
-    match = re.search(r'(?<![A-Za-z])([A-Z]{2,5})(?![A-Za-z])(?=.*(?:Beer|Occupied|by))', text)
-    if match:
-        return match.group(1).upper()
+        tag = match.group(1).upper()
+        # Must not be purely digits, coordinates, or common UI tokens
+        if not re.match(r'^\d+$', tag) and tag not in ['VIP', 'LV', 'EXP', 'ROW', 'COO', 'MIN', 'UTC', 'ETA']:
+            return tag
     return None
 
-# ─── OCR-based owner read (used ONLY for center facility tap) ────────────────
-def find_popup_crop(full_image):
+def read_popup_tag(full_image, use_crop=False):
     """
-    Auto-detect where the popup panel is on screen using color thresholding.
-    WoS popups have a dark background with a distinctive golden/amber border.
-    Returns a cropped image of just the popup, or the full image as fallback.
-    """
-    # Convert to HSV for robust color detection
-    hsv = cv2.cvtColor(full_image, cv2.COLOR_BGR2HSV)
-
-    # The WoS popup panel background is very dark (near black)
-    # Mask for dark region: low saturation, low value
-    lower_dark = np.array([0, 0, 10])
-    upper_dark = np.array([180, 80, 80])
-    dark_mask = cv2.inRange(hsv, lower_dark, upper_dark)
-
-    # The popup has a golden/amber border
-    lower_gold = np.array([15, 100, 150])
-    upper_gold = np.array([35, 255, 255])
-    gold_mask = cv2.inRange(hsv, lower_gold, upper_gold)
-
-    # Dilate gold border to connect it to the dark panel
-    kernel = np.ones((10, 10), np.uint8)
-    gold_dilated = cv2.dilate(gold_mask, kernel, iterations=2)
-
-    # Combine: popup = dark panel touching a gold border
-    popup_mask = cv2.bitwise_and(dark_mask, gold_dilated)
-    popup_mask = cv2.dilate(popup_mask, kernel, iterations=3)
-
-    contours, _ = cv2.findContours(popup_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    if not contours:
-        return full_image  # fallback: use full image
-
-    # Pick the largest contour (the popup panel)
-    largest = max(contours, key=cv2.contourArea)
-    area = cv2.contourArea(largest)
-    h, w = full_image.shape[:2]
-
-    # Sanity check: popup should be at least 3% and less than 60% of screen
-    if area < 0.03 * h * w or area > 0.60 * h * w:
-        return full_image  # fallback
-
-    x, y, bw, bh = cv2.boundingRect(largest)
-    # Add a small padding
-    pad = 20
-    x1 = max(0, x - pad)
-    y1 = max(0, y - pad)
-    x2 = min(w, x + bw + pad)
-    y2 = min(h, y + bh + pad)
-    return full_image[y1:y2, x1:x2]
-
-def read_popup_tag(full_image, use_crop=True):
-    """
-    Find the popup anywhere on screen, then run OCR on just that region.
-    Pass use_crop=False to skip popup detection and OCR the full image directly.
+    Scans the screen popup zone (excluding top HUD and bottom chat/navigation bar).
+    Supports multi-language 'Occupied by' field or directly detects alliance tag [TAG].
     """
     if full_image is None:
         return ""
-    cropped = find_popup_crop(full_image) if use_crop else full_image
-    results = reader.readtext(cropped)
 
-    # Strategy 1: find tag near "Occupied by" text
-    occupied_y = None
-    for (bbox, text, _) in results:
-        if re.search(r'[Oo]ccup', text):
-            occupied_y = (bbox[0][1] + bbox[2][1]) / 2
-            break
+    img_h, img_w = full_image.shape[:2]
+    results = reader.readtext(full_image)
 
-    if occupied_y is not None:
-        best_tag, min_dist = "", 9999
-        for (bbox, text, _) in results:
-            tag = extract_tag(text)
-            if tag:
-                by = (bbox[0][1] + bbox[2][1]) / 2
-                dist = abs(by - occupied_y)
-                if dist < min_dist and dist < 150:
-                    min_dist, best_tag = dist, tag
-        if best_tag:
-            return best_tag
+    # Filter out top HUD (< 15% height) and bottom Chat/Nav (> 84% height)
+    min_y = img_h * 0.15
+    max_y = img_h * 0.84
 
-    # Strategy 2: return first tag we find anywhere in the popup
-    for (_, text, prob) in results:
-        if prob > 0.35:
+    mid_results = []
+    for (bbox, text, prob) in results:
+        cy = (bbox[0][1] + bbox[2][1]) / 2
+        if min_y <= cy <= max_y and prob > 0.2:
+            mid_results.append((bbox, text, prob, cy))
+
+    # Priority 1: Check for 'Occupied by' (including multi-language variants)
+    # e.g., 'Occupied', 'Occup', 'Occupe', 'Besetzt', 'Ocupad', 'Оккуп', '占'
+    occ_cy = None
+    for (bbox, text, prob, cy) in mid_results:
+        if re.search(r'[Oo]ccup|Besetz|[Oo]cupad|Оккуп|占', text, re.I):
+            occ_cy = cy
+            # Check if this line itself says 'None' or 'Empty'
+            if re.search(r'\bNone\b|\bEmpty\b|Aucun|Kein|Никто', text, re.I):
+                return ""
             tag = extract_tag(text)
             if tag:
                 return tag
+            break
+
+    if occ_cy is not None:
+        # Check lines close to the 'Occupied' line vertically
+        candidates = []
+        for (bbox, text, prob, cy) in mid_results:
+            dist = abs(cy - occ_cy)
+            if dist < 120:
+                if re.search(r'\bNone\b|\bEmpty\b|Aucun|Kein|Никто', text, re.I):
+                    return ""
+                tag = extract_tag(text)
+                if tag:
+                    candidates.append((dist, tag))
+        if candidates:
+            candidates.sort(key=lambda x: x[0])
+            return candidates[0][1]
+
+    # Priority 2: Any valid [TAG] in the popup zone
+    for (bbox, text, prob, cy) in mid_results:
+        tag = extract_tag(text)
+        if tag:
+            return tag
+
     return ""
 
 
@@ -431,9 +347,9 @@ def load_data_from_csv(csv_path):
                 facs = json.load(f)
         with open(target_file, 'w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
-            writer.writerow(['Row', 'Facility Type', 'Bonus', 'Level', 'Coordinates', 'Current Owner', 'Connected'])
+            writer.writerow(['Row', 'Facility Type', 'Bonus', 'Level', 'Coordinates', 'Current Owner', 'Connected', 'Screenshot'])
             for item in facs:
-                writer.writerow([item.get('row', ''), item.get('type', ''), item.get('bonus', ''), item.get('level', ''), item.get('coords', ''), '', ''])
+                writer.writerow([item.get('row', ''), item.get('type', ''), item.get('bonus', ''), item.get('level', ''), item.get('coords', ''), '', '', ''])
         print(f"[+] Created {target_file} with {len(facs)} facilities.")
     else:
         print(f"[+] Loaded facility database from: {target_file}")
@@ -556,7 +472,13 @@ def run_full_scan():
                 while len(data[data_idx]) < 8:
                     data[data_idx].append("")
                 data[data_idx][7] = img_file
-                save_data_to_csv('facilities_scanned.csv', data)
+                for attempt in range(60): # wait up to 5 minutes
+                    try:
+                        save_data_to_csv('facilities_scanned.csv', data)
+                        break
+                    except PermissionError:
+                        print("  [!] CSV is open in another program (e.g., Excel). Please close it! Retrying in 5s...")
+                        time.sleep(5)
                 print(f"  [CSV] Written → Owner: '{auto_owner}', Connected: '{connected_str}' (Image: {img_file})")
 
         except Exception as e:
@@ -569,7 +491,13 @@ def run_full_scan():
                     pass
             else:
                 data[data_idx][owner_idx] = "ERROR"
-                save_data_to_csv('facilities_scanned.csv', data)
+                for attempt in range(5):
+                    try:
+                        save_data_to_csv('facilities_scanned.csv', data)
+                        break
+                    except PermissionError:
+                        print("  [!] CSV is open in another program (e.g., Excel). Please close it! Retrying in 5s...")
+                        time.sleep(5)
 
     total_time = time.time() - start_all
     print(f"\n{'='*55}")
