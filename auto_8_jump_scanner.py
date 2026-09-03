@@ -412,21 +412,27 @@ def scan_facility(base_x, base_y, need_owner=True, need_connected=True):
 
 # ─── Full scanner ─────────────────────────────────────────────────────────────
 def load_data_from_csv(csv_path):
-    if not os.path.exists(csv_path):
-        print(f"[*] {csv_path} not found. Auto-generating from master facility database...")
+    scanned_file = 'facilities_scanned.csv'
+    # If facilities_scanned.csv already exists, use it to resume progress!
+    target_file = scanned_file if os.path.exists(scanned_file) else csv_path
+
+    if not os.path.exists(target_file):
+        print(f"[*] {target_file} not found. Auto-generating from master facility database...")
         master_file = 'facilities_master.json'
         facs = []
         if os.path.exists(master_file):
             with open(master_file, 'r', encoding='utf-8') as f:
                 facs = json.load(f)
-        with open(csv_path, 'w', newline='', encoding='utf-8') as f:
+        with open(target_file, 'w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
             writer.writerow(['Row', 'Facility Type', 'Bonus', 'Level', 'Coordinates', 'Current Owner', 'Connected'])
             for item in facs:
                 writer.writerow([item.get('row', ''), item.get('type', ''), item.get('bonus', ''), item.get('level', ''), item.get('coords', ''), '', ''])
-        print(f"[+] Created {csv_path} with {len(facs)} facilities.")
+        print(f"[+] Created {target_file} with {len(facs)} facilities.")
+    else:
+        print(f"[+] Loaded facility database from: {target_file}")
 
-    with open(csv_path, 'r', encoding='utf-8') as f:
+    with open(target_file, 'r', encoding='utf-8') as f:
         reader = csv.reader(f)
         data = list(reader)
     return data
@@ -437,15 +443,20 @@ def save_data_to_csv(csv_path, data):
         writer.writerows(data)
 
 def run_full_scan():
+    import sys
     use_sheets = False
     worksheet = None
     data = None
     csv_file = 'facilities.csv'
 
+    force_csv = '--csv' in sys.argv or config.get("mode") == "csv"
     service_acc = config.get("service_account_file", "wos-service-account.json")
     sheet_url = config.get("sheet_url", "")
 
-    if os.path.exists(service_acc) and sheet_url:
+    if force_csv:
+        print("[*] Running in CSV mode (offline / local file).")
+        use_sheets = False
+    elif os.path.exists(service_acc) and sheet_url:
         try:
             print("[*] Connecting to Google Sheets...")
             scopes = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
