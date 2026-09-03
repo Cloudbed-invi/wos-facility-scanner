@@ -5,8 +5,6 @@ import subprocess
 import json
 import time
 import re
-import os
-import csv
 import gspread
 import threading
 import queue
@@ -14,70 +12,67 @@ import mss
 import win32gui
 from google.oauth2.service_account import Credentials
 
-def load_or_create_config():
-    if not os.path.exists('config.json'):
-        print("[!] config.json not found. Creating default config...")
-        default_config = {
-            "adb_serial": "emulator-5554",
-            "adb_path": "adb",
-            "sheet_url": "",
-            "service_account_file": "wos-service-account.json"
-        }
-        with open('config.json', 'w') as f:
-            json.dump(default_config, f, indent=4)
-        return default_config
-    
-    with open('config.json', 'r') as f:
-        return json.load(f)
-
-config = load_or_create_config()
+with open('config.json', 'r') as f:
+    config = json.load(f)
 
 print("Loading EasyOCR (GPU Enabled)...")
 reader = easyocr.Reader(['en'], gpu=True)
 print("EasyOCR loaded.")
 
-def detect_adb_device(adb_path):
-    print("[*] Detecting ADB devices...")
-    try:
-        result = subprocess.run([adb_path, 'devices'], capture_output=True, text=True)
-    except FileNotFoundError:
-        print(f"[!] ADB not found at path '{adb_path}'. Please install Android platform-tools and add to PATH.")
-        return None
-    except Exception as e:
-        print(f"[!] Failed to run ADB: {e}")
-        return None
-    
-    lines = result.stdout.strip().split('\n')[1:]
-    devices = [line.split('\t')[0] for line in lines if '\tdevice' in line]
-    
-    if len(devices) == 1:
-        print(f"[+] Found emulator: {devices[0]}")
-        return devices[0]
-    elif len(devices) == 0:
-        print("[!] No devices found. Attempting to restart ADB server...")
-        subprocess.run([adb_path, 'kill-server'])
-        subprocess.run([adb_path, 'start-server'])
-        time.sleep(2)
-        
-        result = subprocess.run([adb_path, 'devices'], capture_output=True, text=True)
-        lines = result.stdout.strip().split('\n')[1:]
-        devices = [line.split('\t')[0] for line in lines if '\tdevice' in line]
-        
-        if len(devices) == 1:
-            print(f"[+] Found emulator after restart: {devices[0]}")
-            return devices[0]
-        else:
-            print(f"[!] Still no device found. Please start your emulator.")
-            return None
-    else:
-        print(f"[!] Multiple devices found: {devices}. Falling back to config.json setting.")
-        return None
-
 ADB_PATH = config.get("adb_path", "adb")
-auto_serial = detect_adb_device(ADB_PATH)
-ADB_SERIAL = auto_serial if auto_serial else config.get("adb_serial", "emulator-5554")
 
-# ─── Find and cache BlueStacks window position ───────────────────────────────
+def setup_adb_connection():
+    configured_serial = config.get("adb_serial", "127.0.0.1:7555")
+    # Always attempt connecting to common emulator ports if using network ADB
+    for port in ['127.0.0.1:7555', '127.0.0.1:16384', '127.0.0.1:5555']:
+        subprocess.run([ADB_PATH, 'connect', port], capture_output=True)
+    
+    try:
+        res = subprocess.run([ADB_PATH, 'devices'], capture_output=True, text=True)
+        lines = [l.strip() for l in res.stdout.strip().split('\n')[1:] if '\tdevice' in l]
+        if lines:
+            # If configured serial is present, prefer it
+            serials = [l.split('\t')[0] for l in lines]
+            if configured_serial in serials:
+                serial = configured_serial
+            else:
+                serial = serials[0]
+            print(f"[+] Connected to ADB device: {serial}")
+            return serial
+    except Exception as e:
+        print(f"[!] ADB detection failed: {e}")
+    
+    print(f"[!] Falling back to configured serial: {configured_serial}")
+    return configured_serial
+
+ADB_SERIAL = setup_adb_connection()
+
+# ─── Dynamic Resolution Scaling ──────────────────────────────────────────────
+TARGET_W, TARGET_H = 1080, 1920
+
+def get_device_resolution():
+    try:
+        res = subprocess.run([ADB_PATH, '-s', ADB_SERIAL, 'shell', 'wm', 'size'], capture_output=True, text=True)
+        match = re.search(r'(\d+)x(\d+)', res.stdout)
+        if match:
+            w, h = int(match.group(1)), int(match.group(2))
+            return w, h
+    except Exception as e:
+        print(f"[!] Could not detect wm size: {e}")
+    return 1080, 1920
+
+DEVICE_W, DEVICE_H = get_device_resolution()
+print(f"[+] Emulator Physical Resolution: {DEVICE_W}x{DEVICE_H}")
+
+SCALE_X = DEVICE_W / float(TARGET_W)
+SCALE_Y = DEVICE_H / float(TARGET_H)
+print(f"[+] Coordinate Scaling Factors: X={SCALE_X:.4f}, Y={SCALE_Y:.4f}")
+
+def scale_coords(x, y):
+    """Converts 1080x1920 base coordinates to actual emulator resolution."""
+    return int(round(x * SCALE_X)), int(round(y * SCALE_Y))
+
+# ─── Find and cache Emulator window position ─────────────────────────────────
 _window_rect = None
 
 def find_bluestacks_window():
@@ -89,11 +84,9 @@ def find_bluestacks_window():
     win32gui.EnumWindows(cb, None)
     
     for hwnd, title in titles:
-        if any(kw in title.lower() for kw in ['bluestacks', 'bs5', 'nox', 'ldplayer', 'memu']):
+        if any(kw in title.lower() for kw in ['bluestacks', 'bs5', 'nox', 'ldplayer', 'memu', 'mumu', 'mumunx']):
             left, top, right, bottom = win32gui.GetClientRect(hwnd)
-            # GetClientRect gives size, GetWindowRect gives screen position
             x, y, r, b = win32gui.GetWindowRect(hwnd)
-            # Client area offset (title bar)
             client_left, client_top = win32gui.ClientToScreen(hwnd, (0, 0))
             w = right - left
             h = bottom - top
@@ -111,7 +104,8 @@ def adb_shell(cmd, wait=True):
         subprocess.Popen(full_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def adb_tap(x, y, sleep_time=0.1):
-    adb_shell(f'input tap {x} {y}')
+    sx, sy = scale_coords(x, y)
+    adb_shell(f'input tap {sx} {sy}')
     time.sleep(sleep_time)
 
 # Target resolution — all OCR and crop logic assumes this
@@ -273,32 +267,40 @@ def jump_to_coordinates(x, y, prev_x=None, prev_y=None):
     taps = config['taps']
     del_keys = "input keyevent 67 67 67 67 67"
 
+    # Scale the 1080x1920 base tap coordinates to actual emulator resolution
+    search_x, search_y = scale_coords(*taps['search_map_icon'])
+    x_box_x, x_box_y = scale_coords(*taps['x_input_box'])
+    x_ok_x, x_ok_y = scale_coords(*taps['x_ok_button'])
+    y_box_x, y_box_y = scale_coords(*taps['y_input_box'])
+    y_ok_x, y_ok_y = scale_coords(*taps['y_ok_button'])
+    go_x, go_y = scale_coords(*taps['go_button'])
+
     parts = [
-        f"input tap {taps['search_map_icon'][0]} {taps['search_map_icon'][1]}",
+        f"input tap {search_x} {search_y}",
         "sleep 0.7"
     ]
 
     if str(prev_x) != str(x):
         parts += [
-            f"input tap {taps['x_input_box'][0]} {taps['x_input_box'][1]}",
+            f"input tap {x_box_x} {x_box_y}",
             "sleep 0.2",
             del_keys,
             f"input text {x}",
-            f"input tap {taps['x_ok_button'][0]} {taps['x_ok_button'][1]}",
+            f"input tap {x_ok_x} {x_ok_y}",
             "sleep 0.1"
         ]
 
     if str(prev_y) != str(y):
         parts += [
-            f"input tap {taps['y_input_box'][0]} {taps['y_input_box'][1]}",
+            f"input tap {y_box_x} {y_box_y}",
             "sleep 0.2",
             del_keys,
             f"input text {y}",
-            f"input tap {taps['y_ok_button'][0]} {taps['y_ok_button'][1]}",
+            f"input tap {y_ok_x} {y_ok_y}",
             "sleep 0.1"
         ]
 
-    parts.append(f"input tap {taps['go_button'][0]} {taps['go_button'][1]}")
+    parts.append(f"input tap {go_x} {go_y}")
     adb_shell(" && ".join(parts))
     time.sleep(1.6)  # Jump animation
 
@@ -410,16 +412,20 @@ def scan_facility(base_x, base_y, need_owner=True, need_connected=True):
 
 # ─── Full scanner ─────────────────────────────────────────────────────────────
 def load_data_from_csv(csv_path):
-    rows = []
     if not os.path.exists(csv_path):
-        print(f"[!] {csv_path} not found. Creating a template...")
+        print(f"[*] {csv_path} not found. Auto-generating from master facility database...")
+        master_file = 'facilities_master.json'
+        facs = []
+        if os.path.exists(master_file):
+            with open(master_file, 'r', encoding='utf-8') as f:
+                facs = json.load(f)
         with open(csv_path, 'w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
-            writer.writerow(['ID', 'Name', 'Level', 'Coordinates', 'Owner', 'Connected'])
-            writer.writerow(['1', 'Construction Facility', 'Lv. 1', '138;666', '', ''])
-        print(f"[+] Created {csv_path}. Please fill it out and run again.")
-        return None
-    
+            writer.writerow(['Row', 'Facility Type', 'Bonus', 'Level', 'Coordinates', 'Current Owner', 'Connected'])
+            for item in facs:
+                writer.writerow([item.get('row', ''), item.get('type', ''), item.get('bonus', ''), item.get('level', ''), item.get('coords', ''), '', ''])
+        print(f"[+] Created {csv_path} with {len(facs)} facilities.")
+
     with open(csv_path, 'r', encoding='utf-8') as f:
         reader = csv.reader(f)
         data = list(reader)
@@ -436,10 +442,9 @@ def run_full_scan():
     data = None
     csv_file = 'facilities.csv'
 
-    # Try setting up Google Sheets
     service_acc = config.get("service_account_file", "wos-service-account.json")
     sheet_url = config.get("sheet_url", "")
-    
+
     if os.path.exists(service_acc) and sheet_url:
         try:
             print("[*] Connecting to Google Sheets...")
@@ -451,35 +456,34 @@ def run_full_scan():
             use_sheets = True
             print("[+] Google Sheets connected!")
         except Exception as e:
-            print(f"[!] Failed to connect to Google Sheets: {e}")
+            print(f"[!] Google Sheets connection failed: {e}")
             print("[*] Falling back to CSV mode...")
             use_sheets = False
     else:
-        print("[*] Google Sheets config missing or incomplete. Using CSV mode.")
+        print("[*] Google Sheets credentials not configured. Running in CSV mode.")
         use_sheets = False
 
     if not use_sheets:
         data = load_data_from_csv(csv_file)
-        if data is None:
-            return  # Template was just created, exit
 
     if not data or len(data) < 2:
-        print("[!] No data found to scan.")
+        print("[!] No facilities found to scan.")
         return
 
     rows = data[1:]  # Skip header row
 
-    # Collect rows with coordinates where Owner is still empty
     to_scan = []
     already_done = 0
     for i, row in enumerate(rows):
-        # Pad row if necessary (CSV might have missing columns)
-        while len(row) < 6:
+        while len(row) < 7:
             row.append("")
-            
-        coords_str = row[3].strip()
-        owner_val  = row[4].strip()
-        conn_val   = row[5].strip()
+
+        coords_str = row[4].strip() if (not use_sheets and ';' in row[4]) else (row[3].strip() if ';' in row[3] else '')
+        owner_idx = 5 if (not use_sheets and ';' in row[4]) else 4
+        conn_idx = 6 if (not use_sheets and ';' in row[4]) else 5
+
+        owner_val = row[owner_idx].strip()
+        conn_val = row[conn_idx].strip()
 
         parts = coords_str.split(';')
         if len(parts) != 2:
@@ -489,14 +493,14 @@ def run_full_scan():
         except ValueError:
             continue
 
-        sheet_row = i + 2  # 1-indexed for Sheets, or +1 for header
+        sheet_row = i + 2
         owner_empty = not owner_val or owner_val == "ERROR"
-        conn_empty  = not conn_val
+        conn_empty = not conn_val
 
         if not owner_empty:
             already_done += 1
         else:
-            to_scan.append((sheet_row, x, y, owner_empty, conn_empty, i+1)) # i+1 is the index in data array
+            to_scan.append((sheet_row, x, y, owner_empty, conn_empty, i + 1, owner_idx, conn_idx))
 
     total = len(to_scan)
     print(f"\n[+] Already filled : {already_done} facilities (skipping)")
@@ -508,7 +512,7 @@ def run_full_scan():
     errors = 0
     start_all = time.time()
 
-    for (sheet_row, x, y, need_owner, need_connected, data_idx) in to_scan:
+    for (sheet_row, x, y, need_owner, need_connected, data_idx, owner_idx, conn_idx) in to_scan:
         done += 1
         elapsed = time.time() - start_all
         eta = (elapsed / done) * (total - done) if done > 1 else 0
@@ -522,17 +526,16 @@ def run_full_scan():
 
             if use_sheets:
                 if need_owner:
-                    worksheet.update_cell(sheet_row, 5, auto_owner)
+                    worksheet.update_cell(sheet_row, owner_idx + 1, auto_owner)
                 if need_connected:
-                    worksheet.update_cell(sheet_row, 6, connected_str)
+                    worksheet.update_cell(sheet_row, conn_idx + 1, connected_str)
                 print(f"  [Sheet] Written → Owner: '{auto_owner}', Connected: '{connected_str}'")
-                time.sleep(1.5)  # Avoid rate limits
+                time.sleep(1.5)
             else:
                 if need_owner:
-                    data[data_idx][4] = auto_owner
+                    data[data_idx][owner_idx] = auto_owner
                 if need_connected:
-                    data[data_idx][5] = connected_str
-                # Save locally immediately
+                    data[data_idx][conn_idx] = connected_str
                 save_data_to_csv('facilities_scanned.csv', data)
                 print(f"  [CSV] Written → Owner: '{auto_owner}', Connected: '{connected_str}'")
 
@@ -541,11 +544,11 @@ def run_full_scan():
             print(f"  [ERROR] Row {sheet_row}: {e}")
             if use_sheets:
                 try:
-                    worksheet.update_cell(sheet_row, 5, "ERROR")
+                    worksheet.update_cell(sheet_row, owner_idx + 1, "ERROR")
                 except:
                     pass
             else:
-                data[data_idx][4] = "ERROR"
+                data[data_idx][owner_idx] = "ERROR"
                 save_data_to_csv('facilities_scanned.csv', data)
 
     total_time = time.time() - start_all
@@ -557,4 +560,3 @@ def run_full_scan():
 
 if __name__ == '__main__':
     run_full_scan()
-

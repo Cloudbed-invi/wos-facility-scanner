@@ -1,0 +1,668 @@
+[
+  {
+    "row": 2,
+    "type": "Construction",
+    "bonus": "Build Speed",
+    "level": "Lv 1",
+    "coords": "1068 ; 138",
+    "owner": "WAR",
+    "connected": ""
+  },
+  {
+    "row": 3,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 1",
+    "coords": "537 ; 138",
+    "owner": "WR2",
+    "connected": "WR2"
+  },
+  {
+    "row": 4,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 1",
+    "coords": "138 ; 138",
+    "owner": "EVL",
+    "connected": "EVL"
+  },
+  {
+    "row": 5,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 1",
+    "coords": "138 ; 666",
+    "owner": "OMG",
+    "connected": "OMG"
+  },
+  {
+    "row": 6,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 1",
+    "coords": "138 ; 1038",
+    "owner": "ROY",
+    "connected": "Lgs, MVP"
+  },
+  {
+    "row": 7,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 1",
+    "coords": "666 ; 1068",
+    "owner": "HPL",
+    "connected": "HRV"
+  },
+  {
+    "row": 8,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 1",
+    "coords": "1068 ; 567",
+    "owner": "BYE",
+    "connected": "BYE"
+  },
+  {
+    "row": 9,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 1",
+    "coords": "1068 ; 1068",
+    "owner": "ZED",
+    "connected": "ZEd"
+  },
+  {
+    "row": 10,
+    "type": "Construction",
+    "bonus": "Build Speed",
+    "level": "Lv 3",
+    "coords": "486 ; 327",
+    "owner": "EVL",
+    "connected": "OMG"
+  },
+  {
+    "row": 11,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 3",
+    "coords": "768 ; 867",
+    "owner": "WAR",
+    "connected": "WR2,"
+  },
+  {
+    "row": 12,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 3",
+    "coords": "867 ; 567",
+    "owner": "ZED",
+    "connected": "HPL, RAW"
+  },
+  {
+    "row": 13,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 3",
+    "coords": "327 ; 666",
+    "owner": "OMG",
+    "connected": "ROY, HPL, ZEd"
+  },
+  {
+    "row": 14,
+    "type": "Defense",
+    "bonus": "Troop Defense",
+    "level": "Lv 2",
+    "coords": "666 ; 138",
+    "owner": "WAR",
+    "connected": "WAR"
+  },
+  {
+    "row": 15,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 2",
+    "coords": "438 ; 267",
+    "owner": "EVL",
+    "connected": "WR2"
+  },
+  {
+    "row": 16,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 2",
+    "coords": "138 ; 537",
+    "owner": "OMG",
+    "connected": "SVS"
+  },
+  {
+    "row": 17,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 2",
+    "coords": "237 ; 768",
+    "owner": "ROY",
+    "connected": "POL"
+  },
+  {
+    "row": 18,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 2",
+    "coords": "537 ; 1038",
+    "owner": "KOR",
+    "connected": "SUS, SVS"
+  },
+  {
+    "row": 19,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 2",
+    "coords": "738 ; 957",
+    "owner": "HPL",
+    "connected": "HRV"
+  },
+  {
+    "row": 20,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 2",
+    "coords": "1068 ; 666",
+    "owner": "ZED",
+    "connected": ""
+  },
+  {
+    "row": 21,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 2",
+    "coords": "957 ; 438",
+    "owner": "BYE",
+    "connected": ""
+  },
+  {
+    "row": 22,
+    "type": "Defense",
+    "bonus": "Troop defense",
+    "level": "Lv 4",
+    "coords": "816 ; 717",
+    "owner": "WAR",
+    "connected": "WR2, ZED"
+  },
+  {
+    "row": 23,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 4",
+    "coords": "387 ; 717",
+    "owner": "EVL",
+    "connected": "OMG, ROYIA, SVS"
+  },
+  {
+    "row": 24,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 4",
+    "coords": "588 ; 327",
+    "owner": "OMG",
+    "connected": "BYE, WAR"
+  },
+  {
+    "row": 25,
+    "type": "Tech",
+    "bonus": "Research Speed",
+    "level": "Lv 1",
+    "coords": "957 ; 237",
+    "owner": "ZED",
+    "connected": "LEG"
+  },
+  {
+    "row": 26,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 1",
+    "coords": "666 ; 267",
+    "owner": "WAR",
+    "connected": "WAR, WR2"
+  },
+  {
+    "row": 27,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 1",
+    "coords": "237 ; 237",
+    "owner": "EVL",
+    "connected": "EVL"
+  },
+  {
+    "row": 28,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 1",
+    "coords": "267 ; 537",
+    "owner": "OMG",
+    "connected": ""
+  },
+  {
+    "row": 29,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 1",
+    "coords": "237 ; 957",
+    "owner": "ROY",
+    "connected": "LGS, ROY"
+  },
+  {
+    "row": 30,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 1",
+    "coords": "537 ; 936",
+    "owner": "KOR",
+    "connected": "SVS"
+  },
+  {
+    "row": 31,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 1",
+    "coords": "936 ; 537",
+    "owner": "BYE",
+    "connected": ""
+  },
+  {
+    "row": 32,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 1",
+    "coords": "957 ; 957",
+    "owner": "HPL",
+    "connected": ""
+  },
+  {
+    "row": 33,
+    "type": "Tech",
+    "bonus": "Research Speed",
+    "level": "Lv 3",
+    "coords": "867 ; 327",
+    "owner": "HPL",
+    "connected": "BYE"
+  },
+  {
+    "row": 34,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 3",
+    "coords": "327 ; 327",
+    "owner": "EVL",
+    "connected": "EVL"
+  },
+  {
+    "row": 35,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 3",
+    "coords": "327 ; 867",
+    "owner": "ROY",
+    "connected": ""
+  },
+  {
+    "row": 36,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 3",
+    "coords": "867 ; 867",
+    "owner": "WAR",
+    "connected": "WR2"
+  },
+  {
+    "row": 37,
+    "type": "Weapon",
+    "bonus": "Troop Attack",
+    "level": "Lv 2",
+    "coords": "867 ; 138",
+    "owner": "WAR",
+    "connected": ""
+  },
+  {
+    "row": 38,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 2",
+    "coords": "366 ; 138",
+    "owner": "EVL",
+    "connected": "BCS, EVL, TOP"
+  },
+  {
+    "row": 39,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 2",
+    "coords": "138 ; 438",
+    "owner": "OMG",
+    "connected": "AWZ, SVS"
+  },
+  {
+    "row": 40,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 2",
+    "coords": "138 ; 867",
+    "owner": "ROY",
+    "connected": ""
+  },
+  {
+    "row": 41,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 2",
+    "coords": "438 ; 1068",
+    "owner": "KOR",
+    "connected": "SVS"
+  },
+  {
+    "row": 42,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 2",
+    "coords": "1068 ; 327",
+    "owner": "ZED",
+    "connected": "LEG, ZED"
+  },
+  {
+    "row": 43,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 2",
+    "coords": "1068 ; 867",
+    "owner": "BYE",
+    "connected": "ZED"
+  },
+  {
+    "row": 44,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 2",
+    "coords": "867 ; 1068",
+    "owner": "HPL",
+    "connected": ""
+  },
+  {
+    "row": 45,
+    "type": "Weapon",
+    "bonus": "Troop Attack",
+    "level": "Lv 4",
+    "coords": "816 ; 486",
+    "owner": "HPL",
+    "connected": "BYE, ZEDJ"
+  },
+  {
+    "row": 46,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 4",
+    "coords": "387 ; 486",
+    "owner": "EVL",
+    "connected": "OMG, SVS"
+  },
+  {
+    "row": 47,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 4",
+    "coords": "588 ; 867",
+    "owner": "WAR",
+    "connected": "KOR, ROY, WR2"
+  },
+  {
+    "row": 48,
+    "type": "Gathering",
+    "bonus": "Gather Speed",
+    "level": "Lv 1",
+    "coords": "957 ; 138",
+    "owner": "WAR",
+    "connected": "WAR"
+  },
+  {
+    "row": 49,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 1",
+    "coords": "537 ; 87",
+    "owner": "WR2",
+    "connected": "WR2"
+  },
+  {
+    "row": 50,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 1",
+    "coords": "138 ; 237",
+    "owner": "EVL",
+    "connected": "EVL, FFS"
+  },
+  {
+    "row": 51,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 1",
+    "coords": "87 ; 666",
+    "owner": "OMG",
+    "connected": ""
+  },
+  {
+    "row": 52,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 1",
+    "coords": "267 ; 1068",
+    "owner": "ROY",
+    "connected": "LGS"
+  },
+  {
+    "row": 53,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 1",
+    "coords": "636 ; 1137",
+    "owner": "HPL",
+    "connected": "SVS"
+  },
+  {
+    "row": 54,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 1",
+    "coords": "1137 ; 567",
+    "owner": "BYE",
+    "connected": ""
+  },
+  {
+    "row": 55,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 1",
+    "coords": "1068 ; 936",
+    "owner": "ZED",
+    "connected": ""
+  },
+  {
+    "row": 56,
+    "type": "Production",
+    "bonus": "Res. Prod.",
+    "level": "Lv 1",
+    "coords": "1068 ; 237",
+    "owner": "ZED",
+    "connected": "LEG"
+  },
+  {
+    "row": 57,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 1",
+    "coords": "768 ; 138",
+    "owner": "WAR",
+    "connected": ""
+  },
+  {
+    "row": 58,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 1",
+    "coords": "237 ; 138",
+    "owner": "EVL",
+    "connected": "EVL"
+  },
+  {
+    "row": 59,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 1",
+    "coords": "138 ; 327",
+    "owner": "OMG",
+    "connected": "AWZ, DMX, FFS, OMG"
+  },
+  {
+    "row": 60,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 1",
+    "coords": "138 ; 957",
+    "owner": "ROY",
+    "connected": "MVP"
+  },
+  {
+    "row": 61,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 1",
+    "coords": "327 ; 1038",
+    "owner": "KOR",
+    "connected": ""
+  },
+  {
+    "row": 62,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 1",
+    "coords": "1068 ; 747",
+    "owner": "BYE",
+    "connected": ""
+  },
+  {
+    "row": 63,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 1",
+    "coords": "957 ; 1068",
+    "owner": "HPL",
+    "connected": "KVP"
+  },
+  {
+    "row": 64,
+    "type": "Training",
+    "bonus": "Train Speed",
+    "level": "Lv 2",
+    "coords": "237 ; 486",
+    "owner": "EVL",
+    "connected": "EVL"
+  },
+  {
+    "row": 65,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 2",
+    "coords": "138 ; 747",
+    "owner": "OMG",
+    "connected": "POL, ROY"
+  },
+  {
+    "row": 66,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 2",
+    "coords": "486 ; 957",
+    "owner": "KOR",
+    "connected": "SVS, ZED"
+  },
+  {
+    "row": 67,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 2",
+    "coords": "768 ; 1038",
+    "owner": "HPL",
+    "connected": ""
+  },
+  {
+    "row": 68,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 2",
+    "coords": "957 ; 747",
+    "owner": "ZED",
+    "connected": ""
+  },
+  {
+    "row": 69,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 2",
+    "coords": "1068 ; 486",
+    "owner": "BYE",
+    "connected": "ZED"
+  },
+  {
+    "row": 70,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 2",
+    "coords": "486 ; 138",
+    "owner": "WR2",
+    "connected": "BCS, WR2"
+  },
+  {
+    "row": 71,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 2",
+    "coords": "768 ; 237",
+    "owner": "WAR",
+    "connected": "WR2"
+  },
+  {
+    "row": 72,
+    "type": "Expedition",
+    "bonus": "March Speed",
+    "level": "Lv 3",
+    "coords": "768 ; 327",
+    "owner": "BYE",
+    "connected": "HPL, WAR, WR2"
+  },
+  {
+    "row": 73,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 3",
+    "coords": "327 ; 567",
+    "owner": "EVL",
+    "connected": "EVL, OMG, SVS"
+  },
+  {
+    "row": 74,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 3",
+    "coords": "486 ; 867",
+    "owner": "ROY",
+    "connected": "KOR, ZED"
+  },
+  {
+    "row": 75,
+    "type": "",
+    "bonus": "",
+    "level": "Lv 3",
+    "coords": "867 ; 666",
+    "owner": "WAR",
+    "connected": "WR2, ZED"
+  }
+]
