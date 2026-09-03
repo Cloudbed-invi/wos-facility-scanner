@@ -514,3 +514,8 @@ def run_full_scan():
 
 if __name__ == '__main__':
     run_full_scan()
+    
+    if '--shutdown' in sys.argv:
+        print("\n[!] Shutting down the PC in 3 seconds...")
+        time.sleep(3)
+        os.system('shutdown /s /f /t 0')
