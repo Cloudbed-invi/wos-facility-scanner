@@ -109,13 +109,12 @@ def get_screenshot():
 def extract_tag(text):
     if not text:
         return None
-    # Match tags like [FOR], [FORJ, (KOR), {WAR}, [FOR]REAL
-    # EasyOCR often turns ']' into 'J', 'j', 'I', 'i', '}', ')'
-    match = re.search(r'[\[\(\{]([A-Za-z0-9]{2,5})[\]\)\}JjIi\|]', text)
+    # Match tags like [FOR], [ZROJ, etc.
+    # EasyOCR often turns ']' into 'J', 'j', 'I', 'i', 'L', 'l', '1', '}', ')'
+    match = re.search(r'[\[\(\{]([A-Za-z0-9]{3})[\]\)\}JjIiLl1\|]', text)
     if match:
         tag = match.group(1).upper()
-        # Must not be purely digits, coordinates, or common UI tokens
-        if not re.match(r'^\d+$', tag) and tag not in ['VIP', 'LV', 'EXP', 'ROW', 'COO', 'MIN', 'UTC', 'ETA']:
+        if not re.match(r'^\d+$', tag) and tag not in ['VIP', 'ROW', 'COO', 'MIN', 'UTC', 'ETA']:
             return tag
     return None
 
@@ -357,6 +356,10 @@ def load_data_from_csv(csv_path):
     with open(target_file, 'r', encoding='utf-8') as f:
         reader = csv.reader(f)
         data = list(reader)
+    
+    if data and len(data[0]) == 7:
+        data[0].append('Screenshot')
+        
     return data
 
 def save_data_to_csv(csv_path, data):
