@@ -317,45 +317,51 @@ def ocr_worker(ocr_queue, results_list):
         ocr_queue.task_done()
 
 # ─── Main scan ───────────────────────────────────────────────────────────────
-def scan_facility(base_x, base_y, need_owner=True, need_connected=True):
+def scan_facility(base_x, base_y, need_owner=True, need_connected=True, row_num=None):
     start = time.time()
     owner = ""
     connected = set()
+    img_path = ""
 
-    # ── Step 0: Read Facility Owner (only if needed) ──
-    if need_owner:
-        print(f"  [Jump 0] Center ({base_x}, {base_y}) → reading owner...")
-        jump_to_coordinates(base_x, base_y)
-        last_img = None
-        for attempt in range(3):
-            adb_tap(540, 960, sleep_time=1.0)
-            img = get_screenshot()
-            last_img = img
-            owner = read_popup_tag(img, use_crop=False)
-            if owner:
-                break
-            print(f"  [!] Owner empty, retry {attempt+1}/3...")
-            time.sleep(0.5)
+    os.makedirs('facility_images', exist_ok=True)
 
-        if not owner and last_img is not None:
-            # Save debug screenshot so we can inspect what the bot saw
-            debug_path = f"debug_fail_{base_x}_{base_y}.png"
-            cv2.imwrite(debug_path, last_img)
-            # Print raw OCR text so we know what it found
-            raw = reader.readtext(last_img)
-            print(f"  [DEBUG] Saved screenshot: {debug_path}")
-            print(f"  [DEBUG] Raw OCR found: {[(t, round(p,2)) for _,t,p in raw if p > 0.3]}")
+    # ── Step 0: Read Facility Owner & Save Facility Image ──
+    print(f"  [Jump 0] Center ({base_x}, {base_y}) → reading owner...")
+    jump_to_coordinates(base_x, base_y)
+    last_img = None
+    for attempt in range(3):
+        adb_tap(540, 960, sleep_time=1.0)
+        img = get_screenshot()
+        last_img = img
+        owner = read_popup_tag(img, use_crop=False)
+        if owner:
+            break
+        print(f"  [!] Owner empty, retry {attempt+1}/3...")
+        time.sleep(0.5)
 
-        print(f"  [+] Owner: '{owner}'")
-        adb_tap(10, 500, sleep_time=0.4)
+    # Save screenshot of facility popup
+    if last_img is not None:
+        tag_str = f"_{owner}" if owner else ""
+        row_str = f"Row{row_num}_" if row_num else ""
+        img_path = f"facility_images/{row_str}facility_X{base_x}_Y{base_y}{tag_str}.png"
+        cv2.imwrite(img_path, last_img)
+        print(f"  [+] Saved facility screenshot: {img_path}")
+
+    if not owner and last_img is not None:
+        debug_path = f"debug_fail_{base_x}_{base_y}.png"
+        cv2.imwrite(debug_path, last_img)
+        raw = reader.readtext(last_img)
+        print(f"  [DEBUG] Saved screenshot: {debug_path}")
+        print(f"  [DEBUG] Raw OCR found: {[(t, round(p,2)) for _,t,p in raw if p > 0.3]}")
+
+    print(f"  [+] Owner: '{owner}'")
+    adb_tap(10, 500, sleep_time=0.4)
 
     if not need_connected:
         print(f"  Done in {time.time()-start:.1f}s (owner-only scan)")
-        return owner, []
+        return owner, [], img_path
 
     # ── Step 1: Perimeter — deduplicated 12 unique points ──
-    # sweep covers +9 to -7 (the full facility width)
-    # Corners are counted once in the Right side, not repeated in other sides.
     sweep = [+9, +3, -2, -7]
     jump_points = []
 
@@ -408,7 +414,7 @@ def scan_facility(base_x, base_y, need_owner=True, need_connected=True):
             connected.add(tag)
 
     print(f"  Done in {time.time()-start:.1f}s → Owner: {owner}, Connected: {sorted(connected)}")
-    return owner, sorted(connected)
+    return owner, sorted(connected), img_path
 
 # ─── Full scanner ─────────────────────────────────────────────────────────────
 def load_data_from_csv(csv_path):
@@ -532,7 +538,7 @@ def run_full_scan():
         print(f"[{done}/{total}] Row {sheet_row} | Coords: {x},{y} | Mode: {mode} | ETA: {eta/60:.1f} min")
 
         try:
-            auto_owner, auto_connected = scan_facility(x, y, need_owner=need_owner, need_connected=need_connected)
+            auto_owner, auto_connected, img_file = scan_facility(x, y, need_owner=need_owner, need_connected=need_connected, row_num=sheet_row)
             connected_str = ", ".join(auto_connected)
 
             if use_sheets:
@@ -547,8 +553,11 @@ def run_full_scan():
                     data[data_idx][owner_idx] = auto_owner
                 if need_connected:
                     data[data_idx][conn_idx] = connected_str
+                while len(data[data_idx]) < 8:
+                    data[data_idx].append("")
+                data[data_idx][7] = img_file
                 save_data_to_csv('facilities_scanned.csv', data)
-                print(f"  [CSV] Written → Owner: '{auto_owner}', Connected: '{connected_str}'")
+                print(f"  [CSV] Written → Owner: '{auto_owner}', Connected: '{connected_str}' (Image: {img_file})")
 
         except Exception as e:
             errors += 1

@@ -10,3 +10,5 @@ facilities_scanned.csv
 
 # Debug images
 debug_fail_*.png
+
+facility_images/
