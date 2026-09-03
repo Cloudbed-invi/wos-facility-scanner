@@ -27,7 +27,10 @@ def setup_adb_connection():
     configured_serial = config.get("adb_serial", "127.0.0.1:7555")
     # Always attempt connecting to common emulator ports if using network ADB
     for port in ['127.0.0.1:7555', '127.0.0.1:16384', '127.0.0.1:5555']:
-        subprocess.run([ADB_PATH, 'connect', port], capture_output=True)
+        try:
+            subprocess.run([ADB_PATH, 'connect', port], capture_output=True, timeout=3)
+        except subprocess.TimeoutExpired:
+            pass
     
     try:
         res = subprocess.run([ADB_PATH, 'devices'], capture_output=True, text=True)
